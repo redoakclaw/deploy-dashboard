@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 type DeployState = "idle" | "deploying" | "success" | "failed";
 
@@ -14,6 +14,15 @@ export function DeployButton({
   onDeployStarted?: () => void;
 }) {
   const [state, setState] = useState<DeployState>("idle");
+  const prevDeploying = useRef(externalDeploying);
+
+  // When external deploying goes from true -> false, the deploy finished
+  useEffect(() => {
+    if (prevDeploying.current && !externalDeploying) {
+      setState("idle");
+    }
+    prevDeploying.current = externalDeploying;
+  }, [externalDeploying]);
 
   const effectiveState = externalDeploying ? "deploying" : state;
 

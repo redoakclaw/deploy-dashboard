@@ -59,7 +59,13 @@ export function DeployHistory({
 
   return (
     <div className="overflow-hidden rounded-lg border border-border">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm table-fixed">
+        <colgroup>
+          <col className="w-44" />
+          <col />
+          <col className="w-20" />
+          <col className="w-24" />
+        </colgroup>
         <thead>
           <tr className="border-b border-border bg-bg-card text-left text-xs text-text-muted">
             <th className="px-3 py-2 font-medium">Time</th>
@@ -73,55 +79,54 @@ export function DeployHistory({
             const rc = resultConfig[entry.result] || resultConfig.failed;
             const isExpanded = expandedId === entry.deployId;
             return (
-              <tr key={entry.deployId} className="group">
-                <td colSpan={3} className="p-0">
-                  <button
-                    onClick={() => toggleExpand(entry)}
-                    className="flex w-full items-center border-b border-border px-3 py-2 text-left hover:bg-bg-hover transition-colors"
-                  >
-                    <span className="flex-1 text-text">
-                      {formatTimestamp(entry.timestamp)}
-                    </span>
-                    <span className="w-48 text-text-muted truncate" title={entry.commitMessage || ""}>
-                      {entry.commitHash ? (
-                        <>
-                          <code className="text-[10px] font-mono text-accent">{entry.commitHash}</code>
-                          {entry.commitMessage && (
-                            <span className="ml-1 text-[11px]">{entry.commitMessage}</span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-[11px] italic">-</span>
-                      )}
-                    </span>
-                    <span className="w-20 text-text-muted">
-                      {formatDuration(entry.duration)}
-                    </span>
-                    <span className={`w-24 ${rc.cls}`}>
-                      {rc.icon} {rc.label}
-                    </span>
-                  </button>
-                  {isExpanded && (
-                    <div className="border-b border-border bg-bg p-3 font-mono text-xs leading-5 max-h-60 overflow-auto">
-                      {expandedLogs.length === 0 ? (
-                        <span className="text-text-muted italic">
-                          Loading logs...
+              <tr
+                key={entry.deployId}
+                onClick={() => toggleExpand(entry)}
+                className="cursor-pointer border-b border-border hover:bg-bg-hover transition-colors"
+              >
+                <td className="px-3 py-2 text-text whitespace-nowrap">
+                  {formatTimestamp(entry.timestamp)}
+                </td>
+                <td className="px-3 py-2">
+                  {entry.commitHash ? (
+                    <div>
+                      <code className="text-[11px] font-mono text-accent">
+                        {entry.commitHash}
+                      </code>
+                      {entry.commitMessage && (
+                        <span className="ml-1.5 text-xs text-text-muted">
+                          {entry.commitMessage}
                         </span>
-                      ) : (
-                        expandedLogs.map((line, i) => (
-                          <div key={i} className="text-text-muted">
-                            {line || "\u00a0"}
-                          </div>
-                        ))
                       )}
                     </div>
+                  ) : (
+                    <span className="text-xs text-text-muted italic">-</span>
                   )}
+                </td>
+                <td className="px-3 py-2 text-text-muted whitespace-nowrap">
+                  {formatDuration(entry.duration)}
+                </td>
+                <td className={`px-3 py-2 whitespace-nowrap ${rc.cls}`}>
+                  {rc.icon} {rc.label}
                 </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+      {expandedId && (
+        <div className="border-t border-border bg-bg p-3 font-mono text-xs leading-5 max-h-60 overflow-auto">
+          {expandedLogs.length === 0 ? (
+            <span className="text-text-muted italic">Loading logs...</span>
+          ) : (
+            expandedLogs.map((line, i) => (
+              <div key={i} className="text-text-muted">
+                {line || "\u00a0"}
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
