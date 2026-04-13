@@ -1,3 +1,6 @@
 node_modules/
 .next/
 data/.deploy-status-*.json
+/logs/
+*.tsbuildinfo
+next-env.d.ts
