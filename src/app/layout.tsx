@@ -32,7 +32,14 @@ export default function RootLayout({
               </svg>
               Deploy Dashboard
             </a>
-            <span className="text-xs text-text-muted">OpenClaw Ops</span>
+            <span className="text-xs text-text-muted">
+              OpenClaw Ops
+              {process.env.NEXT_PUBLIC_COMMIT_HASH && (
+                <span className="ml-2 rounded bg-bg-card px-1.5 py-0.5 font-mono text-[10px]" title={`Built: ${process.env.NEXT_PUBLIC_BUILD_TIME || ""}\nCommit: ${process.env.NEXT_PUBLIC_COMMIT_DATE || ""}`}>
+                  v:{process.env.NEXT_PUBLIC_COMMIT_HASH}
+                </span>
+              )}
+            </span>
           </div>
         </header>
         <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
