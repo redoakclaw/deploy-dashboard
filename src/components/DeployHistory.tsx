@@ -63,6 +63,7 @@ export function DeployHistory({
         <thead>
           <tr className="border-b border-border bg-bg-card text-left text-xs text-text-muted">
             <th className="px-3 py-2 font-medium">Time</th>
+            <th className="px-3 py-2 font-medium">Commit</th>
             <th className="px-3 py-2 font-medium">Duration</th>
             <th className="px-3 py-2 font-medium">Result</th>
           </tr>
@@ -80,6 +81,18 @@ export function DeployHistory({
                   >
                     <span className="flex-1 text-text">
                       {formatTimestamp(entry.timestamp)}
+                    </span>
+                    <span className="w-48 text-text-muted truncate" title={entry.commitMessage || ""}>
+                      {entry.commitHash ? (
+                        <>
+                          <code className="text-[10px] font-mono text-accent">{entry.commitHash}</code>
+                          {entry.commitMessage && (
+                            <span className="ml-1 text-[11px]">{entry.commitMessage}</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-[11px] italic">-</span>
+                      )}
                     </span>
                     <span className="w-20 text-text-muted">
                       {formatDuration(entry.duration)}

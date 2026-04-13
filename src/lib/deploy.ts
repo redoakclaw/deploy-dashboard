@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import { spawn, execFileSync } from "child_process";
 import { createWriteStream, readFileSync, existsSync } from "fs";
 import path from "path";
 import type { AppConfig } from "@/types/app";
@@ -103,11 +103,29 @@ export function startDeploy(
     clearTimeout(timeout);
     runningDeploys.delete(app.id);
     const result = code === 0 ? "success" : "failed";
+
+    // Read the current git HEAD from the app's workspace
+    let commitInfo: { hash: string; message: string } | undefined;
+    try {
+      const gitLog = execFileSync("git", ["log", "-1", "--format=%H%n%s"], {
+        cwd: app.workspaceDir,
+        encoding: "utf-8",
+        timeout: 5000,
+      });
+      const [hash, ...msgParts] = gitLog.trim().split("\n");
+      if (hash) {
+        commitInfo = { hash: hash.slice(0, 7), message: msgParts.join("\n") };
+        writeLog(`[${new Date().toISOString()}] Commit: ${commitInfo.hash} - ${commitInfo.message}\n`);
+      }
+    } catch {
+      // Not critical — skip if git isn't available or workspace doesn't exist
+    }
+
     writeLog(
       `\n---\n[${new Date().toISOString()}] Deploy ${result} (exit code: ${code})\n`
     );
     logStream.end();
-    setDeployComplete(app.id, result);
+    setDeployComplete(app.id, result, commitInfo);
   });
 
   child.on("error", (err) => {

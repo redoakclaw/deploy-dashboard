@@ -16,6 +16,8 @@ export interface DeployHistoryEntry {
   result: "success" | "failed" | "running";
   duration: number | null;
   logFile: string;
+  commitHash?: string;
+  commitMessage?: string;
 }
 
 export interface DeployStatusFile {

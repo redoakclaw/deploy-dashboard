@@ -97,8 +97,28 @@ export function LogViewer({
     }
   }, [appId, type, follow]);
 
+  const [copied, setCopied] = useState(false);
+
   const copyLogs = useCallback(() => {
-    navigator.clipboard.writeText(lines.join("\n"));
+    const text = lines.join("\n");
+    // navigator.clipboard requires HTTPS — use fallback for HTTP/Tailscale
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
+    } else {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   }, [lines]);
 
   return (
@@ -115,9 +135,13 @@ export function LogViewer({
         </div>
         <button
           onClick={copyLogs}
-          className="rounded px-2 py-1 text-xs text-text-muted hover:text-text hover:bg-bg-hover transition-colors"
+          className={`rounded px-2 py-1 text-xs transition-colors ${
+            copied
+              ? "text-green-400"
+              : "text-text-muted hover:text-text hover:bg-bg-hover"
+          }`}
         >
-          Copy
+          {copied ? "Copied!" : "Copy"}
         </button>
       </div>
       <div

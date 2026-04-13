@@ -61,7 +61,8 @@ export function setDeploying(
 
 export function setDeployComplete(
   appId: string,
-  result: "success" | "failed"
+  result: "success" | "failed",
+  commitInfo?: { hash: string; message: string }
 ): void {
   const current = readDeployStatus(appId);
   const startedAt = current.startedAt
@@ -75,6 +76,8 @@ export function setDeployComplete(
     result,
     duration,
     logFile: current.logFile || "",
+    commitHash: commitInfo?.hash,
+    commitMessage: commitInfo?.message,
   };
 
   // Keep last 10 entries

@@ -97,6 +97,18 @@ export function AppCard({
             "Never"
           )}
         </span>
+        {app.lastDeploy?.commitHash && (
+          <span className="text-text-muted" title={app.lastDeploy.commitMessage || ""}>
+            <code className="rounded bg-bg px-1.5 py-0.5 text-[10px] font-mono">
+              {app.lastDeploy.commitHash}
+            </code>
+            {app.lastDeploy.commitMessage && (
+              <span className="ml-1 truncate max-w-[200px] inline-block align-bottom">
+                {app.lastDeploy.commitMessage}
+              </span>
+            )}
+          </span>
+        )}
       </div>
     </div>
   );
