@@ -1,0 +1,15 @@
+{
+  "apps": [
+    {
+      "id": "pitching-analysis", 
+      "name": "Pitching Analysis Dashboard",
+      "repo": "redoakclaw/pitching-analysis",
+      "branch": "main",
+      "workspaceDir": "/home/redoakclaw/.openclaw/workspace/pitching-analysis",
+      "deployScript": "scripts/deploy.sh",
+      "serviceName": "pitching-analysis",
+      "port": 3093,
+      "description": "Softball pitching video analysis with MediaPipe pose estimation"
+    }
+  ]
+}
