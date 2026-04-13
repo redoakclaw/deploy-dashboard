@@ -1,5 +1,16 @@
 # Deploy Dashboard - Build Specification
 
+## Key Requirements (CRITICAL)
+- **Deploy process must be spawned detached** (not awaited synchronously)
+- **Must source user's shell profile** for PATH/XDG_RUNTIME_DIR before calling systemctl or npm
+- **Must write deploy status** to a per-app status file (e.g., `data/.deploy-status-<app-id>.json`)
+- **Must not lose runtime data** — each app's deploy.sh handles its own data protection
+- **No authentication needed** (Tailscale-only network)
+
+## What NOT to Build
+- No CI/CD webhooks, no auto-deploy on push, no rollback mechanism, no multi-server support
+- Keep it simple — it's a button that runs a shell script and shows you the output
+
 ## Stack
 - **Next.js** (latest) + **TypeScript** + **Tailwind CSS v4** + **React 19**
 - **Port**: 3099
