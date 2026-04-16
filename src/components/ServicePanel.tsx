@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { StatusBadge } from "./StatusBadge";
-import { LogViewer } from "./LogViewer";
 import type { ServiceStatus } from "@/types/app";
 
 function formatRelativeTime(iso: string | null): string {
@@ -23,37 +22,40 @@ function formatRelativeTime(iso: string | null): string {
 function ServiceRow({
   svc,
   appId,
-  onRestarted,
+  onChanged,
 }: {
   svc: ServiceStatus;
   appId: string;
-  onRestarted: () => void;
+  onChanged: () => void;
 }) {
-  const [restarting, setRestarting] = useState(false);
+  const [acting, setActing] = useState<"restart" | "stop" | "start" | null>(null);
   const [logsOpen, setLogsOpen] = useState(false);
   const [logLines, setLogLines] = useState<string[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [logRefreshKey, setLogRefreshKey] = useState(0);
 
-  const handleRestart = useCallback(async () => {
-    if (restarting) return;
-    setRestarting(true);
-    try {
-      const res = await fetch(
-        `/api/apps/${appId}/services/${svc.name}/restart`,
-        { method: "POST" }
-      );
-      if (!res.ok) {
-        const data = await res.json();
-        console.error("Restart failed:", data.error);
+  const handleAction = useCallback(
+    async (action: "restart" | "stop" | "start") => {
+      if (acting) return;
+      setActing(action);
+      try {
+        const res = await fetch(
+          `/api/apps/${appId}/services/${svc.name}/${action}`,
+          { method: "POST" }
+        );
+        if (!res.ok) {
+          const data = await res.json();
+          console.error(`${action} failed:`, data.error);
+        }
+        onChanged();
+      } catch (err) {
+        console.error(`${action} failed:`, err);
+      } finally {
+        setActing(null);
       }
-      onRestarted();
-    } catch (err) {
-      console.error("Restart failed:", err);
-    } finally {
-      setRestarting(false);
-    }
-  }, [appId, svc.name, restarting, onRestarted]);
+    },
+    [appId, svc.name, acting, onChanged]
+  );
 
   const fetchLogs = useCallback(async () => {
     setLogsLoading(true);
@@ -81,6 +83,8 @@ function ServiceRow({
     }
   }, [logsOpen, fetchLogs]);
 
+  const isRunning = svc.status === "active";
+
   return (
     <div className="border border-border rounded-lg bg-bg-card overflow-hidden">
       <div className="flex items-center gap-3 px-4 py-3">
@@ -100,10 +104,10 @@ function ServiceRow({
 
         {/* Restarted-at */}
         <div className="text-xs text-text-muted whitespace-nowrap">
-          Restarted{" "}
+          {isRunning ? "Restarted" : "Stopped"}{" "}
           <span
             className={
-              svc.status === "active" ? "text-text" : "text-red-400"
+              isRunning ? "text-text" : "text-red-400"
             }
           >
             {formatRelativeTime(svc.restartedAt)}
@@ -118,43 +122,39 @@ function ServiceRow({
           {logsOpen ? "Hide Logs" : "Logs"}
         </button>
 
-        {/* Restart button */}
-        <button
-          onClick={handleRestart}
-          disabled={restarting}
-          className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
-            restarting
-              ? "bg-yellow-600/80 text-yellow-100 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-500 text-white"
-          }`}
-        >
-          {restarting ? (
-            <span className="flex items-center gap-1.5">
-              <svg
-                className="h-3 w-3 animate-spin"
-                viewBox="0 0 24 24"
-                fill="none"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                />
-              </svg>
-              Restarting
-            </span>
-          ) : (
-            "Restart"
-          )}
-        </button>
+        {/* Action buttons */}
+        {isRunning ? (
+          <>
+            <ActionButton
+              label="Restart"
+              actingLabel="Restarting"
+              isActing={acting === "restart"}
+              disabled={acting !== null}
+              onClick={() => handleAction("restart")}
+              className="bg-blue-600 hover:bg-blue-500 text-white"
+              actingClassName="bg-yellow-600/80 text-yellow-100"
+            />
+            <ActionButton
+              label="Stop"
+              actingLabel="Stopping"
+              isActing={acting === "stop"}
+              disabled={acting !== null}
+              onClick={() => handleAction("stop")}
+              className="bg-red-600 hover:bg-red-500 text-white"
+              actingClassName="bg-red-800/80 text-red-200"
+            />
+          </>
+        ) : (
+          <ActionButton
+            label="Start"
+            actingLabel="Starting"
+            isActing={acting === "start"}
+            disabled={acting !== null}
+            onClick={() => handleAction("start")}
+            className="bg-green-600 hover:bg-green-500 text-white"
+            actingClassName="bg-green-800/80 text-green-200"
+          />
+        )}
       </div>
 
       {/* Collapsible log viewer */}
@@ -170,6 +170,65 @@ function ServiceRow({
         </div>
       )}
     </div>
+  );
+}
+
+function ActionButton({
+  label,
+  actingLabel,
+  isActing,
+  disabled,
+  onClick,
+  className,
+  actingClassName,
+}: {
+  label: string;
+  actingLabel: string;
+  isActing: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  className: string;
+  actingClassName: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+        isActing
+          ? `${actingClassName} cursor-not-allowed`
+          : disabled
+            ? "bg-gray-600/50 text-gray-400 cursor-not-allowed"
+            : className
+      }`}
+    >
+      {isActing ? (
+        <span className="flex items-center gap-1.5">
+          <svg
+            className="h-3 w-3 animate-spin"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
+          </svg>
+          {actingLabel}
+        </span>
+      ) : (
+        label
+      )}
+    </button>
   );
 }
 
@@ -309,7 +368,7 @@ export function ServicePanel({ appId }: { appId: string }) {
           key={svc.name}
           svc={svc}
           appId={appId}
-          onRestarted={fetchServices}
+          onChanged={fetchServices}
         />
       ))}
     </div>

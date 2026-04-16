@@ -105,3 +105,29 @@ export async function restartService(serviceName: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function stopService(serviceName: string): Promise<boolean> {
+  try {
+    const result = await runCommand("systemctl", [
+      "--user",
+      "stop",
+      `${serviceName}.service`,
+    ]);
+    return result.exitCode === 0;
+  } catch {
+    return false;
+  }
+}
+
+export async function startService(serviceName: string): Promise<boolean> {
+  try {
+    const result = await runCommand("systemctl", [
+      "--user",
+      "start",
+      `${serviceName}.service`,
+    ]);
+    return result.exitCode === 0;
+  } catch {
+    return false;
+  }
+}
