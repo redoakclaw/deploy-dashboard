@@ -25,7 +25,7 @@
         {
           "name": "scrooge-signal-loop",
           "label": "Signal Loop",
-          "description": "Main trading daemon — processes signals, places orders"
+          "description": "Main trading daemon — processes signals, places orders (includes inline options executor)"
         },
         {
           "name": "scrooge-ts-quotes",
@@ -35,12 +35,22 @@
         {
           "name": "scrooge-live-pnl",
           "label": "Live P&L",
-          "description": "Real-time P&L tracking and Telegram updates"
+          "description": "Real-time futures P&L tracking and Telegram updates"
         },
         {
           "name": "scrooge-dashboard",
           "label": "Dashboard",
           "description": "Next.js trading dashboard on port 3088"
+        },
+        {
+          "name": "scrooge-shadow-trader",
+          "label": "Shadow Trader",
+          "description": "Mirrors production signals to live personal futures account (210VVC62)"
+        },
+        {
+          "name": "scrooge-options-pnl",
+          "label": "Options P&L",
+          "description": "Monitors options trade log and updates pinned Telegram message with live options P&L"
         }
       ]
     }
