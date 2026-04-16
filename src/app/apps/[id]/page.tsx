@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { DeployButton } from "@/components/DeployButton";
 import { LogViewer } from "@/components/LogViewer";
 import { DeployHistory } from "@/components/DeployHistory";
+import { ServicePanel } from "@/components/ServicePanel";
 import type { AppWithStatus, DeployHistoryEntry, StatusResponse } from "@/types/app";
 
 const POLL_INTERVAL_IDLE = 10000;
@@ -78,6 +79,7 @@ export default function AppDetailPage({
   const isDeploying = status?.deployStatus === "deploying";
   const serviceStatus = status?.serviceStatus || app.serviceStatus;
   const displayStatus = isDeploying ? "deploying" : serviceStatus;
+  const hasMultipleServices = (app.services?.length ?? 0) > 1;
 
   return (
     <div>
@@ -120,7 +122,9 @@ export default function AppDetailPage({
                 {app.repo}
               </a>
             </span>
-            <span>Service: {app.serviceName}</span>
+            {!hasMultipleServices && (
+              <span>Service: {app.serviceName}</span>
+            )}
           </div>
         </div>
         <DeployButton
@@ -130,10 +134,18 @@ export default function AppDetailPage({
         />
       </div>
 
-      {/* Logs */}
+      {/* Services — shown for multi-service apps like Scrooge */}
+      {hasMultipleServices && (
+        <div className="mb-6">
+          <h2 className="mb-3 text-lg font-semibold">Services</h2>
+          <ServicePanel appId={app.id} />
+        </div>
+      )}
+
+      {/* Deploy Logs */}
       <div className="mb-6">
         <div className="mb-3 flex items-center gap-2">
-          <h2 className="text-lg font-semibold">Logs</h2>
+          <h2 className="text-lg font-semibold">Deploy Logs</h2>
           <div className="flex rounded-lg border border-border bg-bg-card text-xs">
             <button
               onClick={() => {
