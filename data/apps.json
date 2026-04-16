@@ -1,7 +1,7 @@
 {
   "apps": [
     {
-      "id": "pitching-analysis", 
+      "id": "pitching-analysis",
       "name": "Pitching Analysis Dashboard",
       "repo": "redoakclaw/pitching-analysis",
       "branch": "main",
@@ -10,6 +10,39 @@
       "serviceName": "pitching-analysis",
       "port": 3093,
       "description": "Softball pitching video analysis with MediaPipe pose estimation"
+    },
+    {
+      "id": "scrooge",
+      "name": "Scrooge Trading Bot",
+      "repo": "redoakclaw/scrooge",
+      "branch": "master",
+      "workspaceDir": "/home/redoakclaw/.openclaw/workspace/trading-bot",
+      "deployScript": "scripts/deploy.sh",
+      "serviceName": "scrooge-signal-loop",
+      "port": 3088,
+      "description": "Automated MES/MNQ futures + 0DTE options trading bot (ORB strategy) with TradeStation real-time feed and Next.js status dashboard",
+      "services": [
+        {
+          "name": "scrooge-signal-loop",
+          "label": "Signal Loop",
+          "description": "Main trading daemon — processes signals, places orders"
+        },
+        {
+          "name": "scrooge-ts-quotes",
+          "label": "TS Quotes",
+          "description": "TradeStation real-time price feed"
+        },
+        {
+          "name": "scrooge-live-pnl",
+          "label": "Live P&L",
+          "description": "Real-time P&L tracking and Telegram updates"
+        },
+        {
+          "name": "scrooge-dashboard",
+          "label": "Dashboard",
+          "description": "Next.js trading dashboard on port 3088"
+        }
+      ]
     }
   ]
 }

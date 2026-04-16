@@ -1,3 +1,9 @@
+export interface ServiceConfig {
+  name: string;
+  label: string;
+  description: string;
+}
+
 export interface AppConfig {
   id: string;
   name: string;
@@ -8,6 +14,7 @@ export interface AppConfig {
   serviceName: string;
   port: number;
   description: string;
+  services?: ServiceConfig[];
 }
 
 export interface DeployHistoryEntry {
@@ -26,6 +33,14 @@ export interface DeployStatusFile {
   startedAt: string | null;
   logFile: string | null;
   history: DeployHistoryEntry[];
+}
+
+export interface ServiceStatus {
+  name: string;
+  label: string;
+  description: string;
+  status: "active" | "inactive" | "failed" | "unknown";
+  restartedAt: string | null;
 }
 
 export interface AppWithStatus extends AppConfig {
