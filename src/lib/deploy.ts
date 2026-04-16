@@ -21,6 +21,65 @@ export function getRunningDeployCount(): number {
   return runningDeploys.size;
 }
 
+/**
+ * Ensure the deploy script exists on disk before we try to run it.
+ * This handles the chicken-and-egg case where the deploy script was
+ * just added or updated in the remote but hasn't been pulled yet.
+ * We fetch from origin and checkout just the deploy script file from
+ * the target branch, leaving everything else for the script itself
+ * to handle via git reset --hard.
+ */
+function ensureDeployScript(app: AppConfig): { ok: boolean; error?: string } {
+  const env = { ...process.env };
+  if (!env.XDG_RUNTIME_DIR) {
+    const uid = process.getuid?.();
+    if (uid !== undefined) {
+      env.XDG_RUNTIME_DIR = `/run/user/${uid}`;
+    }
+  }
+
+  try {
+    execFileSync("git", ["fetch", "origin", app.branch], {
+      cwd: app.workspaceDir,
+      encoding: "utf-8",
+      timeout: 30000,
+      env,
+    });
+  } catch (err) {
+    return { ok: false, error: `git fetch failed: ${err}` };
+  }
+
+  try {
+    execFileSync(
+      "git",
+      ["checkout", `origin/${app.branch}`, "--", app.deployScript],
+      {
+        cwd: app.workspaceDir,
+        encoding: "utf-8",
+        timeout: 10000,
+        env,
+      }
+    );
+  } catch (err) {
+    return {
+      ok: false,
+      error: `git checkout of ${app.deployScript} failed: ${err}`,
+    };
+  }
+
+  // Ensure it's executable
+  try {
+    execFileSync("chmod", ["+x", app.deployScript], {
+      cwd: app.workspaceDir,
+      timeout: 5000,
+    });
+  } catch {
+    // Non-fatal — the script may already be executable
+  }
+
+  return { ok: true };
+}
+
 export function startDeploy(
   app: AppConfig
 ): { deployId: string; logFile: string } | { error: string } {
@@ -50,6 +109,18 @@ export function startDeploy(
   writeLog(`[${new Date().toISOString()}] Starting deploy: ${deployId}\n`);
   writeLog(`[${new Date().toISOString()}] App: ${app.name}\n`);
   writeLog(`[${new Date().toISOString()}] Script: ${app.deployScript}\n`);
+
+  // Ensure the deploy script is on disk (fetch + checkout from remote)
+  writeLog(`[${new Date().toISOString()}] Fetching deploy script from origin/${app.branch}...\n`);
+  const ensureResult = ensureDeployScript(app);
+  if (!ensureResult.ok) {
+    writeLog(`[${new Date().toISOString()}] ${ensureResult.error}\n`);
+    writeLog(`\n---\n[${new Date().toISOString()}] Deploy failed (could not fetch deploy script)\n`);
+    logStream.end();
+    setDeployComplete(app.id, "failed");
+    return { error: ensureResult.error! };
+  }
+  writeLog(`[${new Date().toISOString()}] Deploy script ready.\n`);
   writeLog(`---\n`);
 
   const deployScriptPath = path.join(app.workspaceDir, app.deployScript);
