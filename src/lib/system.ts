@@ -13,11 +13,10 @@ function getSystemEnv(): NodeJS.ProcessEnv {
 
 function runCommand(
   command: string,
-  args: string[],
-  env?: Record<string, string>
+  args: string[]
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return new Promise((resolve) => {
-    const mergedEnv = { ...getSystemEnv(), ...env } as NodeJS.ProcessEnv;
+    const mergedEnv = getSystemEnv() as NodeJS.ProcessEnv;
 
     execFile(command, args, { env: mergedEnv }, (error, stdout, stderr) => {
       resolve({
@@ -48,6 +47,25 @@ export async function getServiceStatus(
   }
 }
 
+export async function getTimerStatus(
+  timerName: string
+): Promise<"active" | "inactive" | "failed" | "unknown"> {
+  try {
+    const result = await runCommand("systemctl", [
+      "--user",
+      "is-active",
+      `${timerName}.timer`,
+    ]);
+    const status = result.stdout.trim();
+    if (status === "active") return "active";
+    if (status === "inactive") return "inactive";
+    if (status === "failed") return "failed";
+    return "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
 export async function getServiceRestartedAt(
   serviceName: string
 ): Promise<string | null> {
@@ -59,13 +77,11 @@ export async function getServiceRestartedAt(
       "ActiveEnterTimestamp",
       `${serviceName}.service`,
     ]);
-    // Output looks like: ActiveEnterTimestamp=Thu 2026-04-10 15:30:00 EDT
     const line = result.stdout.trim();
     const eqIdx = line.indexOf("=");
     if (eqIdx === -1) return null;
     const value = line.slice(eqIdx + 1).trim();
     if (!value) return null;
-    // Parse the systemd timestamp into ISO format
     const date = new Date(value);
     if (isNaN(date.getTime())) return null;
     return date.toISOString();
@@ -125,6 +141,32 @@ export async function startService(serviceName: string): Promise<boolean> {
       "--user",
       "start",
       `${serviceName}.service`,
+    ]);
+    return result.exitCode === 0;
+  } catch {
+    return false;
+  }
+}
+
+export async function stopTimer(timerName: string): Promise<boolean> {
+  try {
+    const result = await runCommand("systemctl", [
+      "--user",
+      "stop",
+      `${timerName}.timer`,
+    ]);
+    return result.exitCode === 0;
+  } catch {
+    return false;
+  }
+}
+
+export async function startTimer(timerName: string): Promise<boolean> {
+  try {
+    const result = await runCommand("systemctl", [
+      "--user",
+      "start",
+      `${timerName}.timer`,
     ]);
     return result.exitCode === 0;
   } catch {
