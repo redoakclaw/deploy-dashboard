@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getApp } from "@/lib/apps";
-import { restartService, getServiceStatus } from "@/lib/system";
+import { restartService, startService, getServiceStatus } from "@/lib/system";
 
 export const dynamic = "force-dynamic";
 
@@ -15,27 +15,29 @@ export async function POST(
     return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
 
-  // Validate that the service belongs to this app
-  const validNames = app.services
-    ? app.services.map((s) => s.name)
-    : [app.serviceName];
-
-  if (!validNames.includes(serviceName)) {
+  const svcConfig = app.services?.find((s) => s.name === serviceName);
+  if (!svcConfig && serviceName !== app.serviceName) {
     return NextResponse.json(
       { error: `Service "${serviceName}" is not registered for app "${id}"` },
       { status: 400 }
     );
   }
 
-  const ok = await restartService(serviceName);
+  const isTimer = (svcConfig as { type?: string } | undefined)?.type === "timer";
+
+  // For timers: "restart" means "run the oneshot service now".
+  // For daemons: restart the long-running service.
+  const ok = isTimer
+    ? await startService(serviceName)
+    : await restartService(serviceName);
+
   if (!ok) {
     return NextResponse.json(
-      { error: `Failed to restart ${serviceName}` },
+      { error: `Failed to ${isTimer ? "trigger" : "restart"} ${serviceName}` },
       { status: 500 }
     );
   }
 
-  // Brief pause for systemd to settle, then read back status
   await new Promise((r) => setTimeout(r, 1500));
   const status = await getServiceStatus(serviceName);
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getApp } from "@/lib/apps";
-import { startService, getServiceStatus } from "@/lib/system";
+import { startService, startTimer, getServiceStatus, getTimerStatus } from "@/lib/system";
 
 export const dynamic = "force-dynamic";
 
@@ -15,18 +15,22 @@ export async function POST(
     return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
 
-  const validNames = app.services
-    ? app.services.map((s) => s.name)
-    : [app.serviceName];
-
-  if (!validNames.includes(serviceName)) {
+  const svcConfig = app.services?.find((s) => s.name === serviceName);
+  if (!svcConfig && serviceName !== app.serviceName) {
     return NextResponse.json(
       { error: `Service "${serviceName}" is not registered for app "${id}"` },
       { status: 400 }
     );
   }
 
-  const ok = await startService(serviceName);
+  const isTimer = (svcConfig as { type?: string } | undefined)?.type === "timer";
+
+  // For timers: start the .timer unit (enables scheduling).
+  // For daemons: start the .service unit.
+  const ok = isTimer
+    ? await startTimer(serviceName)
+    : await startService(serviceName);
+
   if (!ok) {
     return NextResponse.json(
       { error: `Failed to start ${serviceName}` },
@@ -35,7 +39,9 @@ export async function POST(
   }
 
   await new Promise((r) => setTimeout(r, 1500));
-  const status = await getServiceStatus(serviceName);
+  const status = isTimer
+    ? await getTimerStatus(serviceName)
+    : await getServiceStatus(serviceName);
 
   return NextResponse.json({
     serviceName,
