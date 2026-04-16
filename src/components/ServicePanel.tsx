@@ -34,6 +34,9 @@ function ServiceRow({
   const [logsLoading, setLogsLoading] = useState(false);
   const [logRefreshKey, setLogRefreshKey] = useState(0);
 
+  const isTimer = svc.type === "timer";
+  const isRunning = svc.status === "active";
+
   const handleAction = useCallback(
     async (action: "restart" | "stop" | "start") => {
       if (acting) return;
@@ -83,16 +86,18 @@ function ServiceRow({
     }
   }, [logsOpen, fetchLogs]);
 
-  const isRunning = svc.status === "active";
-
   return (
     <div className="border border-border rounded-lg bg-bg-card overflow-hidden">
       <div className="flex items-center gap-3 px-4 py-3">
-        {/* Status + name */}
         <StatusBadge status={svc.status} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm text-text">{svc.label}</span>
+            {isTimer && (
+              <span className="rounded bg-bg px-1.5 py-0.5 text-[10px] font-mono text-text-muted border border-border">
+                timer
+              </span>
+            )}
             <span className="text-xs text-text-muted font-mono">
               {svc.name}
             </span>
@@ -102,19 +107,17 @@ function ServiceRow({
           )}
         </div>
 
-        {/* Restarted-at */}
         <div className="text-xs text-text-muted whitespace-nowrap">
-          {isRunning ? "Restarted" : "Stopped"}{" "}
-          <span
-            className={
-              isRunning ? "text-text" : "text-red-400"
-            }
-          >
+          {isTimer
+            ? "Last ran"
+            : isRunning
+              ? "Restarted"
+              : "Stopped"}{" "}
+          <span className={isRunning ? "text-text" : "text-red-400"}>
             {formatRelativeTime(svc.restartedAt)}
           </span>
         </div>
 
-        {/* Logs toggle */}
         <button
           onClick={toggleLogs}
           className="rounded px-2.5 py-1.5 text-xs font-medium text-text-muted hover:text-text hover:bg-bg-hover transition-colors"
@@ -122,8 +125,40 @@ function ServiceRow({
           {logsOpen ? "Hide Logs" : "Logs"}
         </button>
 
-        {/* Action buttons */}
-        {isRunning ? (
+        {isTimer ? (
+          <>
+            <ActionButton
+              label="Run Now"
+              actingLabel="Running"
+              isActing={acting === "restart"}
+              disabled={acting !== null}
+              onClick={() => handleAction("restart")}
+              className="bg-blue-600 hover:bg-blue-500 text-white"
+              actingClassName="bg-yellow-600/80 text-yellow-100"
+            />
+            {isRunning ? (
+              <ActionButton
+                label="Disable"
+                actingLabel="Disabling"
+                isActing={acting === "stop"}
+                disabled={acting !== null}
+                onClick={() => handleAction("stop")}
+                className="bg-red-600 hover:bg-red-500 text-white"
+                actingClassName="bg-red-800/80 text-red-200"
+              />
+            ) : (
+              <ActionButton
+                label="Enable"
+                actingLabel="Enabling"
+                isActing={acting === "start"}
+                disabled={acting !== null}
+                onClick={() => handleAction("start")}
+                className="bg-green-600 hover:bg-green-500 text-white"
+                actingClassName="bg-green-800/80 text-green-200"
+              />
+            )}
+          </>
+        ) : isRunning ? (
           <>
             <ActionButton
               label="Restart"
@@ -157,7 +192,6 @@ function ServiceRow({
         )}
       </div>
 
-      {/* Collapsible log viewer */}
       {logsOpen && (
         <div className="border-t border-border">
           <ServiceLogViewer
@@ -361,16 +395,38 @@ export function ServicePanel({ appId }: { appId: string }) {
 
   if (services.length === 0) return null;
 
+  const daemons = services.filter((s) => s.type !== "timer");
+  const timers = services.filter((s) => s.type === "timer");
+
   return (
-    <div className="flex flex-col gap-2">
-      {services.map((svc) => (
-        <ServiceRow
-          key={svc.name}
-          svc={svc}
-          appId={appId}
-          onChanged={fetchServices}
-        />
-      ))}
+    <div className="flex flex-col gap-4">
+      {daemons.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {daemons.map((svc) => (
+            <ServiceRow
+              key={svc.name}
+              svc={svc}
+              appId={appId}
+              onChanged={fetchServices}
+            />
+          ))}
+        </div>
+      )}
+      {timers.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-text-muted mb-2">Scheduled Jobs</h3>
+          <div className="flex flex-col gap-2">
+            {timers.map((svc) => (
+              <ServiceRow
+                key={svc.name}
+                svc={svc}
+                appId={appId}
+                onChanged={fetchServices}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
