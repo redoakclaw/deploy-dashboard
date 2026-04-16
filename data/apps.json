@@ -93,6 +93,30 @@
           "label": "Watchdog",
           "description": "Signal loop health monitor — auto-restarts if unhealthy (every 5 min market hours)",
           "type": "timer"
+        },
+        {
+          "name": "scrooge-eod-reconciler",
+          "label": "EOD Reconciler",
+          "description": "Post-EOD broker sync with retries (4:01, 4:15, 4:30, 4:45 PM ET)",
+          "type": "timer"
+        },
+        {
+          "name": "scrooge-premarket-cleanup",
+          "label": "Pre-Market Cleanup",
+          "description": "Delete yesterday's pinned P&L messages (9:15 AM ET)",
+          "type": "timer"
+        },
+        {
+          "name": "scrooge-options-pnl-update",
+          "label": "Options P&L Update",
+          "description": "Update options P&L Telegram pin (every 15 min 9-15 ET)",
+          "type": "timer"
+        },
+        {
+          "name": "scrooge-clearlevels-eod",
+          "label": "Clear Levels EOD",
+          "description": "Clear Levels EOD performance update (4:15 PM ET)",
+          "type": "timer"
         }
       ]
     }
