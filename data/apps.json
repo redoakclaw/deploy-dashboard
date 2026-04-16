@@ -51,6 +51,48 @@
           "name": "scrooge-options-pnl",
           "label": "Options P&L",
           "description": "Monitors options trade log and updates pinned Telegram message with live options P&L"
+        },
+        {
+          "name": "scrooge-briefing",
+          "label": "Briefing",
+          "description": "Morning market briefing + regime analysis (9:15 AM ET)",
+          "type": "timer"
+        },
+        {
+          "name": "scrooge-orb-confirm",
+          "label": "ORB Confirm",
+          "description": "Calculate and set breakout levels for the day (10:01 AM ET)",
+          "type": "timer"
+        },
+        {
+          "name": "scrooge-orb-health",
+          "label": "ORB Health",
+          "description": "Validate ORB levels exist, self-heal if missing (10:05 AM ET)",
+          "type": "timer"
+        },
+        {
+          "name": "scrooge-selfheal",
+          "label": "Self-Heal",
+          "description": "Recover missed briefing/ORB operations (10:15 AM ET)",
+          "type": "timer"
+        },
+        {
+          "name": "scrooge-close",
+          "label": "Close Warning",
+          "description": "Market close position check and warnings (3:30 PM ET)",
+          "type": "timer"
+        },
+        {
+          "name": "scrooge-eod",
+          "label": "EOD Report",
+          "description": "End-of-day reconciliation, P&L report, dashboard screenshot (4:00 PM ET)",
+          "type": "timer"
+        },
+        {
+          "name": "scrooge-watchdog",
+          "label": "Watchdog",
+          "description": "Signal loop health monitor — auto-restarts if unhealthy (every 5 min market hours)",
+          "type": "timer"
         }
       ]
     }
