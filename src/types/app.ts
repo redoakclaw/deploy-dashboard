@@ -2,6 +2,7 @@ export interface ServiceConfig {
   name: string;
   label: string;
   description: string;
+  type?: "service" | "timer";
 }
 
 export interface AppConfig {
@@ -41,6 +42,7 @@ export interface ServiceStatus {
   description: string;
   status: "active" | "inactive" | "failed" | "unknown";
   restartedAt: string | null;
+  type: "service" | "timer";
 }
 
 export interface AppWithStatus extends AppConfig {
