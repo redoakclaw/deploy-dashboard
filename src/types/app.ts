@@ -16,6 +16,7 @@ export interface AppConfig {
   port: number;
   description: string;
   services?: ServiceConfig[];
+  systemdUnitsDir?: string;
 }
 
 export interface DeployHistoryEntry {
@@ -60,4 +61,39 @@ export interface StatusResponse {
 export interface LogsResponse {
   lines: string[];
   type: "deploy" | "service";
+}
+
+export type UnitDriftStatus =
+  | "in-sync"
+  | "drifted"
+  | "missing-installed"
+  | "orphan-installed";
+
+export interface SystemdUnit {
+  name: string;
+  kind: "service" | "timer";
+  driftStatus: UnitDriftStatus;
+  repoPath: string | null;
+  installedPath: string | null;
+  diff: string | null;
+  isActive: boolean;
+  unitType: "simple" | "oneshot" | "forking" | "notify" | "timer" | "unknown";
+}
+
+export interface UnitsResponse {
+  units: SystemdUnit[];
+  supported: boolean;
+  reason?: string;
+}
+
+export interface UnitInstallResult {
+  name: string;
+  success: boolean;
+  error?: string;
+}
+
+export interface UnitInstallResponse {
+  results: UnitInstallResult[];
+  daemonReloaded: boolean;
+  daemonReloadError?: string;
 }

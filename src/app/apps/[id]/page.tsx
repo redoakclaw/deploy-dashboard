@@ -7,6 +7,7 @@ import { DeployButton } from "@/components/DeployButton";
 import { LogViewer } from "@/components/LogViewer";
 import { DeployHistory } from "@/components/DeployHistory";
 import { ServicePanel } from "@/components/ServicePanel";
+import { UnitsPanel } from "@/components/UnitsPanel";
 import type { AppWithStatus, DeployHistoryEntry, StatusResponse } from "@/types/app";
 
 const POLL_INTERVAL_IDLE = 10000;
@@ -139,6 +140,24 @@ export default function AppDetailPage({
         <div className="mb-6">
           <h2 className="mb-3 text-lg font-semibold">Services</h2>
           <ServicePanel appId={app.id} />
+        </div>
+      )}
+
+      {/* Systemd units — drift between repo and installed */}
+      {app.systemdUnitsDir && (
+        <div className="mb-6">
+          <h2 className="mb-1 text-lg font-semibold">Systemd Units</h2>
+          <p className="mb-3 text-xs text-text-muted">
+            Diff between{" "}
+            <code className="font-mono text-text">
+              {app.systemdUnitsDir}/
+            </code>{" "}
+            in the repo and installed copies in{" "}
+            <code className="font-mono text-text">~/.config/systemd/user/</code>
+            . Install copies + runs daemon-reload; it does not restart running
+            services.
+          </p>
+          <UnitsPanel appId={app.id} />
         </div>
       )}
 
