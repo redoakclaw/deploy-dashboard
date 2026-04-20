@@ -224,8 +224,13 @@ export function HealthPanel({
         <div className="flex items-center gap-2 text-sm text-red-400">
           <span className="inline-block h-2 w-2 rounded-full bg-red-400" />
           Health endpoint unreachable
+          {typeof response.httpStatus === "number" && (
+            <span className="ml-1 rounded bg-bg px-1.5 py-0.5 text-[10px] font-mono text-text-muted border border-border">
+              HTTP {response.httpStatus}
+            </span>
+          )}
         </div>
-        <div className="mt-1 text-xs text-text-muted font-mono">
+        <div className="mt-2 max-h-40 overflow-auto rounded border border-border bg-bg p-2 font-mono text-[11px] leading-4 text-text-muted whitespace-pre-wrap break-all">
           {response.error}
         </div>
       </div>

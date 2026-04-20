@@ -70,25 +70,35 @@ export async function GET(
       headers: { accept: "application/json" },
     });
 
+    // Read the raw text first so we can show the operator exactly what
+    // upstream returned when JSON parsing fails — a 404 HTML page and a
+    // crashed handler's error page look identical in the UI otherwise.
+    const rawText = await upstream.text();
+    const contentType = upstream.headers.get("content-type") || "";
+
     let parsed: unknown;
     try {
-      parsed = await upstream.json();
+      parsed = JSON.parse(rawText);
     } catch {
+      const snippet = rawText.slice(0, 200).replace(/\s+/g, " ").trim();
       const res: HealthResponse = {
         supported: true,
         fetchedAt,
         httpStatus: upstream.status,
-        error: "upstream returned non-JSON",
+        error:
+          `HTTP ${upstream.status} · content-type ${contentType || "(none)"} · ` +
+          `body: ${snippet || "(empty)"}`,
       };
       return NextResponse.json(res);
     }
 
     if (!isHealthPayload(parsed)) {
+      const snippet = rawText.slice(0, 200).replace(/\s+/g, " ").trim();
       const res: HealthResponse = {
         supported: true,
         fetchedAt,
         httpStatus: upstream.status,
-        error: "upstream JSON did not match expected health shape",
+        error: `upstream JSON did not match expected health shape · body: ${snippet}`,
       };
       return NextResponse.json(res);
     }
