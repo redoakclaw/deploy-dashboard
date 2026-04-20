@@ -8,6 +8,7 @@ import { LogViewer } from "@/components/LogViewer";
 import { DeployHistory } from "@/components/DeployHistory";
 import { ServicePanel } from "@/components/ServicePanel";
 import { UnitsPanel } from "@/components/UnitsPanel";
+import { HealthPill, HealthPanel } from "@/components/HealthPill";
 import type { AppWithStatus, DeployHistoryEntry, StatusResponse } from "@/types/app";
 
 const POLL_INTERVAL_IDLE = 10000;
@@ -96,9 +97,10 @@ export default function AppDetailPage({
       {/* Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-bold">{app.name}</h1>
             <StatusBadge status={displayStatus} />
+            {app.healthUrl && <HealthPill appId={app.id} pollIntervalMs={10000} />}
           </div>
           <p className="mt-1 text-sm text-text-muted">{app.description}</p>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
@@ -134,6 +136,20 @@ export default function AppDetailPage({
           onDeployStarted={handleDeployStarted}
         />
       </div>
+
+      {/* Functional health — what the app reports about itself */}
+      {app.healthUrl && (
+        <div className="mb-6">
+          <h2 className="mb-1 text-lg font-semibold">Functional Health</h2>
+          <p className="mb-3 text-xs text-text-muted">
+            Self-reported by the app at{" "}
+            <code className="font-mono text-text">{app.healthUrl}</code>.
+            Catches "process is running but not doing the right thing"
+            failures that systemd status can't see.
+          </p>
+          <HealthPanel appId={app.id} pollIntervalMs={10000} />
+        </div>
+      )}
 
       {/* Services — shown for multi-service apps like Scrooge */}
       {hasMultipleServices && (

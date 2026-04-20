@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { StatusBadge } from "./StatusBadge";
 import { DeployButton } from "./DeployButton";
+import { HealthPill } from "./HealthPill";
 import type { AppWithStatus } from "@/types/app";
 
 function formatTime(timestamp: string | null | undefined): string {
@@ -36,7 +37,7 @@ export function AppCard({
     <div className="rounded-xl border border-border bg-bg-card p-5 transition-colors hover:bg-bg-hover">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <Link
               href={`/apps/${app.id}`}
               className="text-lg font-semibold text-text hover:text-accent transition-colors truncate"
@@ -44,6 +45,7 @@ export function AppCard({
               {app.name}
             </Link>
             <StatusBadge status={statusForBadge} />
+            {app.healthUrl && <HealthPill appId={app.id} pollIntervalMs={30000} />}
           </div>
           <p className="mt-1 text-sm text-text-muted truncate">
             {app.description}

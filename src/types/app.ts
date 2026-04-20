@@ -17,6 +17,7 @@ export interface AppConfig {
   description: string;
   services?: ServiceConfig[];
   systemdUnitsDir?: string;
+  healthUrl?: string;
 }
 
 export interface DeployHistoryEntry {
@@ -96,4 +97,31 @@ export interface UnitInstallResponse {
   results: UnitInstallResult[];
   daemonReloaded: boolean;
   daemonReloadError?: string;
+}
+
+// Matches the contract of the app's own /api/health endpoint, e.g. scrooge's
+// dashboard/src/app/api/health/route.ts. `ok: null` is informational (e.g.
+// RTH-gated checks outside market hours) and doesn't score either way.
+export interface HealthCheck {
+  label: string;
+  ok: boolean | null;
+  detail: string;
+  ageSec?: number;
+}
+
+export interface HealthPayload {
+  ok: boolean;
+  pass: number;
+  fail: number;
+  ts: string;
+  checks: HealthCheck[];
+}
+
+export interface HealthResponse {
+  supported: boolean;
+  reason?: string;
+  fetchedAt: string;
+  payload?: HealthPayload;
+  httpStatus?: number;
+  error?: string;
 }

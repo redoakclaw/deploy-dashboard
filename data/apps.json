@@ -22,6 +22,7 @@
       "port": 3088,
       "description": "Automated MES/MNQ futures + 0DTE options trading bot (ORB strategy) with TradeStation real-time feed and Next.js status dashboard",
       "systemdUnitsDir": "deploy",
+      "healthUrl": "http://localhost:3088/api/health",
       "services": [
         {
           "name": "scrooge-signal-loop",
