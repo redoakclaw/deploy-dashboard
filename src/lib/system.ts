@@ -90,6 +90,43 @@ export async function getServiceRestartedAt(
   }
 }
 
+// For oneshot services invoked by a timer, ActiveEnterTimestamp on the .service
+// is often empty because the unit never settles into "active" — it transitions
+// activating → inactive too fast. The timer itself tracks LastTriggerUSec
+// (last fire) and NextElapseUSecRealtime (next fire), which is what we want
+// for the "Last ran" display and for sorting scheduled jobs by time-of-day.
+export async function getTimerTimings(
+  timerName: string
+): Promise<{ lastRun: string | null; nextRun: string | null }> {
+  try {
+    const result = await runCommand("systemctl", [
+      "--user",
+      "show",
+      "-p",
+      "LastTriggerUSec",
+      "-p",
+      "NextElapseUSecRealtime",
+      `${timerName}.timer`,
+    ]);
+    const out = { lastRun: null as string | null, nextRun: null as string | null };
+    for (const raw of result.stdout.split("\n")) {
+      const line = raw.trim();
+      const eqIdx = line.indexOf("=");
+      if (eqIdx === -1) continue;
+      const key = line.slice(0, eqIdx);
+      const value = line.slice(eqIdx + 1).trim();
+      if (!value || value === "n/a" || value === "0") continue;
+      const date = new Date(value);
+      if (isNaN(date.getTime())) continue;
+      if (key === "LastTriggerUSec") out.lastRun = date.toISOString();
+      else if (key === "NextElapseUSecRealtime") out.nextRun = date.toISOString();
+    }
+    return out;
+  } catch {
+    return { lastRun: null, nextRun: null };
+  }
+}
+
 export async function getServiceLogs(
   serviceName: string,
   lines: number = 50

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getApp } from "@/lib/apps";
-import { getServiceStatus, getTimerStatus, getServiceRestartedAt } from "@/lib/system";
+import {
+  getServiceStatus,
+  getTimerStatus,
+  getServiceRestartedAt,
+  getTimerTimings,
+} from "@/lib/system";
 import type { ServiceStatus } from "@/types/app";
 
 export const dynamic = "force-dynamic";
@@ -28,21 +33,37 @@ export async function GET(
     serviceConfigs.map(async (svc) => {
       const isTimer = (svc as { type?: string }).type === "timer";
 
-      // For timers: status comes from the .timer unit (is it scheduled?),
-      // last-run comes from the .service unit (when did it last fire?).
-      // For daemons: both come from the .service unit.
+      if (isTimer) {
+        // For timers: status comes from the .timer unit, last-run and next-run
+        // come from the timer's own LastTriggerUSec / NextElapseUSecRealtime —
+        // the service's ActiveEnterTimestamp is unreliable for quick oneshots.
+        const [status, timings] = await Promise.all([
+          getTimerStatus(svc.name),
+          getTimerTimings(svc.name),
+        ]);
+        return {
+          name: svc.name,
+          label: svc.label,
+          description: svc.description,
+          status,
+          restartedAt: timings.lastRun,
+          nextRunAt: timings.nextRun,
+          type: "timer" as const,
+        };
+      }
+
+      // Daemons: both from the .service unit.
       const [status, restartedAt] = await Promise.all([
-        isTimer ? getTimerStatus(svc.name) : getServiceStatus(svc.name),
+        getServiceStatus(svc.name),
         getServiceRestartedAt(svc.name),
       ]);
-
       return {
         name: svc.name,
         label: svc.label,
         description: svc.description,
         status,
         restartedAt,
-        type: isTimer ? "timer" as const : "service" as const,
+        type: "service" as const,
       };
     })
   );

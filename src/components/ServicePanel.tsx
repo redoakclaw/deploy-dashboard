@@ -19,6 +19,28 @@ function formatRelativeTime(iso: string | null): string {
   return `${diffDays}d ago`;
 }
 
+function formatNextRun(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  if (diffMs <= 0) return "now";
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "in <1m";
+  if (diffMins < 60) return `in ${diffMins}m`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `in ${diffHours}h ${diffMins % 60}m`;
+  // For anything farther out, show clock time with ET locale so the
+  // operator can see "next 09:15 tomorrow" at a glance.
+  const hhmm = date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/New_York",
+  });
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return `${hhmm} tomorrow ET`;
+  return `${hhmm} +${diffDays}d ET`;
+}
+
 function ServiceRow({
   svc,
   appId,
@@ -107,15 +129,22 @@ function ServiceRow({
           )}
         </div>
 
-        <div className="text-xs text-text-muted whitespace-nowrap">
-          {isTimer
-            ? "Last ran"
-            : isRunning
-              ? "Restarted"
-              : "Stopped"}{" "}
-          <span className={isRunning ? "text-text" : "text-red-400"}>
-            {formatRelativeTime(svc.restartedAt)}
-          </span>
+        <div className="text-xs text-text-muted whitespace-nowrap text-right">
+          <div>
+            {isTimer
+              ? "Last ran"
+              : isRunning
+                ? "Restarted"
+                : "Stopped"}{" "}
+            <span className={isRunning ? "text-text" : "text-red-400"}>
+              {formatRelativeTime(svc.restartedAt)}
+            </span>
+          </div>
+          {isTimer && svc.nextRunAt && (
+            <div className="text-[10px] text-text-muted">
+              next {formatNextRun(svc.nextRunAt)}
+            </div>
+          )}
         </div>
 
         <button
@@ -396,7 +425,21 @@ export function ServicePanel({ appId }: { appId: string }) {
   if (services.length === 0) return null;
 
   const daemons = services.filter((s) => s.type !== "timer");
-  const timers = services.filter((s) => s.type === "timer");
+  // Sort timers by their next fire time ascending so the morning jobs
+  // appear above the afternoon ones — the operator can scroll top-to-bottom
+  // and see the day's schedule in order. Timers with no known nextRunAt
+  // sort to the end to keep them out of the sequenced view.
+  const timers = services
+    .filter((s) => s.type === "timer")
+    .slice()
+    .sort((a, b) => {
+      if (!a.nextRunAt && !b.nextRunAt) return a.name.localeCompare(b.name);
+      if (!a.nextRunAt) return 1;
+      if (!b.nextRunAt) return -1;
+      return (
+        new Date(a.nextRunAt).getTime() - new Date(b.nextRunAt).getTime()
+      );
+    });
 
   return (
     <div className="flex flex-col gap-4">

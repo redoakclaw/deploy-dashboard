@@ -44,6 +44,7 @@ export interface ServiceStatus {
   description: string;
   status: "active" | "inactive" | "failed" | "unknown";
   restartedAt: string | null;
+  nextRunAt?: string | null;
   type: "service" | "timer";
 }
 
