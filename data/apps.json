@@ -12,6 +12,32 @@
       "description": "Softball pitching video analysis with MediaPipe pose estimation"
     },
     {
+      "id": "cpo-finder",
+      "name": "CPO Finder",
+      "repo": "redoakclaw/cpo-finder",
+      "branch": "main",
+      "workspaceDir": "/home/redoakclaw/.openclaw/workspace/cpo-finder",
+      "deployScript": "scripts/deploy.sh",
+      "serviceName": "cpo-finder-web",
+      "port": 3003,
+      "description": "Certified pre-owned inventory tracker (Lexus/Genesis/Infiniti/Acura/Mazda/Toyota/VW) with daily scrape + cost-of-ownership and warranty tools",
+      "systemdUnitsDir": "deploy",
+      "healthUrl": "http://localhost:3003/healthz",
+      "services": [
+        {
+          "name": "cpo-finder-web",
+          "label": "Web Dashboard",
+          "description": "Flask/gunicorn server on port 3003 serving inventory dashboard + calculators"
+        },
+        {
+          "name": "cpo-finder-scrape",
+          "label": "Daily Scrape",
+          "description": "Runs scraper_main.py, commits refreshed JSON, pushes to main (6:00 AM ET)",
+          "type": "timer"
+        }
+      ]
+    },
+    {
       "id": "scrooge",
       "name": "Scrooge Trading Bot",
       "repo": "redoakclaw/scrooge",
