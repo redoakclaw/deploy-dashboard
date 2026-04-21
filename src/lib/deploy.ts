@@ -81,7 +81,8 @@ function ensureDeployScript(app: AppConfig): { ok: boolean; error?: string } {
 }
 
 export function startDeploy(
-  app: AppConfig
+  app: AppConfig,
+  opts: { force?: boolean } = {}
 ): { deployId: string; logFile: string } | { error: string } {
   // Check if already deploying
   if (isDeploying(app.id)) {
@@ -132,6 +133,17 @@ export function startDeploy(
     if (uid !== undefined) {
       env.XDG_RUNTIME_DIR = `/run/user/${uid}`;
     }
+  }
+
+  // When the operator clicked Deploy anyway from the preflight modal,
+  // signal that intent to the app's deploy script via FORCE_RESET=1.
+  // Apps that care (e.g. scripts/deploy.sh with a local-changes guard)
+  // use this; apps that don't just ignore the extra env var.
+  if (opts.force) {
+    env.FORCE_RESET = "1";
+    writeLog(
+      `[${new Date().toISOString()}] Deploy flagged FORCE_RESET=1 by operator\n`
+    );
   }
 
   // Spawn detached so the deploy survives if the dashboard restarts

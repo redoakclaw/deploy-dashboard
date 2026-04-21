@@ -126,3 +126,37 @@ export interface HealthResponse {
   httpStatus?: number;
   error?: string;
 }
+
+export interface DirtyFile {
+  path: string;
+  change: string; // porcelain status letter: M, A, D, R, ??, etc.
+}
+
+export interface AheadCommit {
+  sha: string;
+  subject: string;
+}
+
+export interface WorkspaceState {
+  head: string | null;
+  remoteHead: string | null;
+  ahead: number;
+  behind: number;
+  dirtyTrackedFiles: DirtyFile[];
+  untrackedFiles: DirtyFile[];
+  previouslyTrackedFiles: string[];
+  aheadCommits: AheadCommit[];
+  error?: string;
+}
+
+export interface DeployPreflight {
+  supported: boolean;
+  reason?: string;
+  workspace?: WorkspaceState;
+  // Convenience flags for the UI:
+  // clean = no work needed, safe to deploy without prompting
+  clean?: boolean;
+  // needsConfirmation = dirty tracked files or ahead of remote — operator
+  // should see a modal before the git reset happens.
+  needsConfirmation?: boolean;
+}
