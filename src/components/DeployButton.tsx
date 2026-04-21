@@ -176,9 +176,16 @@ function PreflightModal({
         <div className="border-b border-border px-5 py-3">
           <h3 className="text-base font-semibold">Review before deploy</h3>
           <p className="mt-1 text-xs text-text-muted">
-            Deploy will run <code className="font-mono text-text">git reset --hard</code>{" "}
-            in the workspace. The items below will be overwritten or left
-            behind. Review and proceed only if expected.
+            The default deploy performs{" "}
+            <code className="font-mono text-text">git merge --ff-only</code> to{" "}
+            <code className="font-mono text-text">origin/{w.branch}</code> —
+            well-behaved deploy scripts will refuse while the workspace has
+            the state below. Clicking <span className="text-text">Deploy anyway</span>{" "}
+            sets <code className="font-mono text-text">FORCE_RESET=1</code>{" "}
+            in the spawned script's env; scripts honoring this flag will
+            discard local changes via{" "}
+            <code className="font-mono text-text">git reset --hard</code>{" "}
+            before deploying.
           </p>
         </div>
 
@@ -189,8 +196,8 @@ function PreflightModal({
                 <span>⚠</span>
                 <span>
                   {w.dirtyTrackedFiles.length} modified tracked file
-                  {w.dirtyTrackedFiles.length === 1 ? "" : "s"} will be
-                  overwritten
+                  {w.dirtyTrackedFiles.length === 1 ? "" : "s"} — overwritten
+                  if you force
                 </span>
               </div>
               <ul className="rounded border border-border bg-bg p-2 font-mono text-xs max-h-40 overflow-auto">
@@ -212,9 +219,9 @@ function PreflightModal({
                   Workspace is {w.ahead} commit{w.ahead === 1 ? "" : "s"} ahead
                   of{" "}
                   <code className="font-mono text-text">
-                    origin (ref not shown)
+                    origin/{w.branch}
                   </code>{" "}
-                  — these will be discarded
+                  — discarded if you force
                 </span>
               </div>
               <ul className="rounded border border-border bg-bg p-2 font-mono text-xs max-h-40 overflow-auto">
@@ -230,9 +237,10 @@ function PreflightModal({
 
           {w.behind > 0 && (
             <div className="text-xs text-text-muted">
-              Workspace is behind origin by {w.behind} commit
-              {w.behind === 1 ? "" : "s"} — these will be applied by the
-              reset.
+              Workspace is behind{" "}
+              <code className="font-mono text-text">origin/{w.branch}</code> by{" "}
+              {w.behind} commit{w.behind === 1 ? "" : "s"} — these will be
+              applied when the deploy fast-forwards.
             </div>
           )}
 

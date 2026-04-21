@@ -71,33 +71,48 @@ function parsePorcelain(stdout: string): {
   return { tracked, untracked };
 }
 
-// "Previously tracked" = paths that git history shows as deleted at some
-// point, and which still exist on disk. After `git rm --cached <path>`
-// the file remains on disk but is removed from the index; if subsequently
-// gitignored it won't appear in `status` at all, so it won't show up in
-// either tracked or untracked lists. Surfacing it as an info row lets the
-// operator confirm "yes, that's expected runtime state" and rules it out
-// as the next weird-mystery cause.
+// "Previously tracked" = paths that were added to the tree at some point
+// in history (any branch) AND are currently gitignored-and-present on disk.
+// The intersection is the state produced by `git rm --cached <path>`
+// (or equivalent) followed by the file being covered by a gitignore rule.
+// We intentionally exclude:
+//   - files currently tracked (git ls-files --others leaves those out)
+//   - files that merely happen to match an ignore rule without ever having
+//     been committed (e.g. __pycache__/*.pyc that were never added)
+// so the UI only surfaces the "expected after un-track commit" state, not
+// arbitrary gitignored cruft.
 async function getPreviouslyTrackedFiles(cwd: string): Promise<string[]> {
-  const r = await runGit(cwd, [
+  const addedRes = await runGit(cwd, [
     "log",
-    "--diff-filter=D",
+    "--all",
+    "--diff-filter=A",
     "--name-only",
     "--pretty=format:",
-    "HEAD",
   ]);
-  if (r.exitCode !== 0) return [];
-  const seen = new Set<string>();
-  const result: string[] = [];
-  for (const raw of r.stdout.split("\n")) {
+  if (addedRes.exitCode !== 0) return [];
+  const everAdded = new Set<string>();
+  for (const raw of addedRes.stdout.split("\n")) {
     const path = raw.trim();
-    if (!path || seen.has(path)) continue;
-    seen.add(path);
-    // Only surface ones that still exist on disk.
-    if (existsSync(`${cwd}/${path}`)) {
+    if (path) everAdded.add(path);
+  }
+  if (everAdded.size === 0) return [];
+
+  const ignoredRes = await runGit(cwd, [
+    "ls-files",
+    "--others",
+    "--ignored",
+    "--exclude-standard",
+  ]);
+  if (ignoredRes.exitCode !== 0) return [];
+
+  const result: string[] = [];
+  for (const raw of ignoredRes.stdout.split("\n")) {
+    const path = raw.trim();
+    if (!path) continue;
+    if (everAdded.has(path)) {
       result.push(path);
+      if (result.length >= 50) break;
     }
-    if (result.length >= 50) break; // hard cap to keep response small
   }
   return result;
 }
@@ -159,6 +174,7 @@ export async function getPreflight(app: AppConfig): Promise<DeployPreflight> {
   const previouslyTrackedFiles = await getPreviouslyTrackedFiles(cwd);
 
   const workspace: WorkspaceState = {
+    branch: app.branch,
     head: head || null,
     remoteHead: remoteHead || null,
     ahead,

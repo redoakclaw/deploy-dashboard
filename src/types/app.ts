@@ -138,6 +138,7 @@ export interface AheadCommit {
 }
 
 export interface WorkspaceState {
+  branch: string;
   head: string | null;
   remoteHead: string | null;
   ahead: number;
