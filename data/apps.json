@@ -22,7 +22,6 @@
       "port": 3003,
       "description": "Certified pre-owned inventory tracker (Lexus/Genesis/Infiniti/Acura/Mazda/Toyota/VW) with daily scrape + cost-of-ownership and warranty tools",
       "systemdUnitsDir": "deploy",
-      "healthUrl": "http://localhost:3003/healthz",
       "services": [
         {
           "name": "cpo-finder-web",
