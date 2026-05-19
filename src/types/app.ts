@@ -130,6 +130,17 @@ export interface HealthResponse {
 export interface DirtyFile {
   path: string;
   change: string; // porcelain status letter: M, A, D, R, ??, etc.
+  // For tracked-modified files only: the unified diff between local HEAD
+  // and the working-tree content (truncated). Lets the UI show what
+  // would be lost on a force-deploy without making the user SSH to the
+  // box and run `git diff` themselves.
+  diffVsHead?: string;
+  // True iff the working-tree content for this file is identical to
+  // what's at origin/<branch>. Means the local "modification" is purely
+  // a local-HEAD-vs-origin gap — the fast-forward will resolve it
+  // automatically with no real conflict. UI surfaces these with a
+  // friendlier tone since force-deploy is genuinely safe for them.
+  redundantWithRemote?: boolean;
 }
 
 export interface AheadCommit {
