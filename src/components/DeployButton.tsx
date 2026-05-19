@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { DeployPreflight } from "@/types/app";
+import type { DeployPreflight, DirtyFile } from "@/types/app";
 
 type DeployState = "idle" | "checking" | "deploying" | "success" | "failed";
 
@@ -161,7 +161,19 @@ function PreflightModal({
   if (!open || !preflight || !preflight.workspace) return null;
   const w = preflight.workspace;
 
+  // Split dirty files into "real conflict" vs "redundant with origin".
+  // A redundant file has working-tree content identical to origin/<branch> —
+  // the modification is purely a local-HEAD-vs-origin gap that the
+  // fast-forward will resolve. Force-deploy discards nothing meaningful.
+  const realDirtyFiles = w.dirtyTrackedFiles.filter(
+    (f) => !f.redundantWithRemote
+  );
+  const redundantDirtyFiles = w.dirtyTrackedFiles.filter(
+    (f) => f.redundantWithRemote
+  );
   const hasDirty = w.dirtyTrackedFiles.length > 0;
+  const hasRealDirty = realDirtyFiles.length > 0;
+  const hasRedundantDirty = redundantDirtyFiles.length > 0;
   const hasAhead = w.ahead > 0;
   const hasPrevTracked = w.previouslyTrackedFiles.length > 0;
 
@@ -190,22 +202,40 @@ function PreflightModal({
         </div>
 
         <div className="max-h-[60vh] overflow-auto px-5 py-4 space-y-4 text-sm">
-          {hasDirty && (
+          {hasRealDirty && (
             <div>
               <div className="flex items-center gap-2 text-yellow-400 font-medium mb-1">
                 <span>⚠</span>
                 <span>
-                  {w.dirtyTrackedFiles.length} modified tracked file
-                  {w.dirtyTrackedFiles.length === 1 ? "" : "s"} — overwritten
-                  if you force
+                  {realDirtyFiles.length} modified tracked file
+                  {realDirtyFiles.length === 1 ? "" : "s"} — overwritten if
+                  you force
                 </span>
               </div>
-              <ul className="rounded border border-border bg-bg p-2 font-mono text-xs max-h-40 overflow-auto">
-                {w.dirtyTrackedFiles.map((f) => (
-                  <li key={f.path} className="text-text-muted">
-                    <span className="text-yellow-400 mr-2">{f.change}</span>
-                    {f.path}
-                  </li>
+              <ul className="rounded border border-border bg-bg p-2 font-mono text-xs max-h-60 overflow-auto space-y-1">
+                {realDirtyFiles.map((f) => (
+                  <DirtyFileRow key={f.path} file={f} accent="warn" />
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {hasRedundantDirty && (
+            <div>
+              <div className="flex items-center gap-2 text-green-400 font-medium mb-1">
+                <span>✓</span>
+                <span>
+                  {redundantDirtyFiles.length} modified file
+                  {redundantDirtyFiles.length === 1 ? "" : "s"} already match
+                  <code className="font-mono mx-1">
+                    origin/{w.branch}
+                  </code>
+                  — safe to force; nothing meaningful would be discarded
+                </span>
+              </div>
+              <ul className="rounded border border-border bg-bg p-2 font-mono text-xs max-h-60 overflow-auto space-y-1">
+                {redundantDirtyFiles.map((f) => (
+                  <DirtyFileRow key={f.path} file={f} accent="ok" />
                 ))}
               </ul>
             </div>
@@ -303,5 +333,50 @@ function PreflightModal({
         </div>
       </div>
     </div>
+  );
+}
+
+// One row in the dirty-tracked-files list. Shows the porcelain status
+// letter + path, plus an expand-on-click "view diff" toggle that
+// renders the unified diff between local HEAD and the working-tree
+// content. Accent controls warn (yellow) vs ok (muted/green) coloring
+// so the modal can visually separate real conflicts from redundant ones.
+function DirtyFileRow({
+  file,
+  accent,
+}: {
+  file: DirtyFile;
+  accent: "warn" | "ok";
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const statusColor = accent === "warn" ? "text-yellow-400" : "text-green-400";
+  const pathColor = accent === "warn" ? "text-text" : "text-text-muted";
+  const hasDiff = !!file.diffVsHead;
+
+  return (
+    <li>
+      <div className="flex items-center gap-2">
+        <span className={`${statusColor} w-3 shrink-0`}>{file.change}</span>
+        <span className={`${pathColor} flex-1 truncate`}>{file.path}</span>
+        {accent === "ok" && (
+          <span className="text-green-400 text-[10px] uppercase tracking-wide">
+            matches origin
+          </span>
+        )}
+        {hasDiff && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="text-[10px] uppercase tracking-wide text-text-muted hover:text-text underline"
+          >
+            {expanded ? "hide diff" : "view diff"}
+          </button>
+        )}
+      </div>
+      {expanded && hasDiff && (
+        <pre className="mt-1 ml-5 rounded bg-bg p-2 text-[11px] leading-snug overflow-auto max-h-60 whitespace-pre">
+          {file.diffVsHead}
+        </pre>
+      )}
+    </li>
   );
 }

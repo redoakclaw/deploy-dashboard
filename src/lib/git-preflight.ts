@@ -132,6 +132,69 @@ async function parseAheadCommits(stdout: string): Promise<AheadCommit[]> {
   return out;
 }
 
+// Cap on per-file diff size we send to the UI. Most real diffs are tiny;
+// a generated file or vendor blob can be huge. 8KB lets us show a config
+// flip or small code change in full, while keeping the JSON response
+// reasonable.
+const MAX_DIFF_BYTES = 8000;
+
+function truncateDiff(s: string): string {
+  if (s.length <= MAX_DIFF_BYTES) return s;
+  return (
+    s.slice(0, MAX_DIFF_BYTES) +
+    `\n\n... (truncated; ${s.length - MAX_DIFF_BYTES} more chars not shown)`
+  );
+}
+
+// Enrich a dirty tracked file with two extra signals for the UI:
+//   diffVsHead         - what the user changed locally (vs local HEAD)
+//   redundantWithRemote - working-tree content equals origin/<branch>'s
+//                         content, so the local "modification" is purely
+//                         the gap between local HEAD and origin/<branch>
+//                         that the fast-forward will close
+// Both are read-only git operations.
+async function enrichDirtyFile(
+  cwd: string,
+  remoteRef: string,
+  file: DirtyFile
+): Promise<DirtyFile> {
+  // Capture the user-visible patch. Works for M / A / D / R; for D the
+  // diff shows the deleted content, which is exactly what the user wants
+  // to see before force-discarding it.
+  const diffRes = await runGit(cwd, [
+    "diff",
+    "HEAD",
+    "--",
+    file.path,
+  ]);
+  const diffVsHead =
+    diffRes.exitCode === 0 && diffRes.stdout
+      ? truncateDiff(diffRes.stdout)
+      : undefined;
+
+  // Redundancy check only meaningful for plain "modified" status — the
+  // working tree has content AND origin should have the same path.
+  // hash-object hashes the working-tree file; rev-parse gets the
+  // origin/<branch> tree's hash for that path. Same hash → same bytes.
+  let redundantWithRemote = false;
+  const change = file.change.trim();
+  if (change === "M") {
+    const [wtRes, originRes] = await Promise.all([
+      runGit(cwd, ["hash-object", file.path]),
+      runGit(cwd, ["rev-parse", `${remoteRef}:${file.path}`]),
+    ]);
+    if (wtRes.exitCode === 0 && originRes.exitCode === 0) {
+      const wtHash = wtRes.stdout.trim();
+      const originHash = originRes.stdout.trim();
+      if (wtHash && originHash && wtHash === originHash) {
+        redundantWithRemote = true;
+      }
+    }
+  }
+
+  return { ...file, diffVsHead, redundantWithRemote };
+}
+
 export async function getPreflight(app: AppConfig): Promise<DeployPreflight> {
   const cwd = app.workspaceDir;
 
@@ -168,10 +231,17 @@ export async function getPreflight(app: AppConfig): Promise<DeployPreflight> {
 
   const ahead = parseInt(aheadCountRaw.stdout.trim(), 10) || 0;
   const behind = parseInt(behindCountRaw.stdout.trim(), 10) || 0;
-  const { tracked: dirtyTrackedFiles, untracked: untrackedFiles } =
+  const { tracked: rawTracked, untracked: untrackedFiles } =
     parsePorcelain(statusRaw.stdout);
   const aheadCommits = await parseAheadCommits(logRaw.stdout);
   const previouslyTrackedFiles = await getPreviouslyTrackedFiles(cwd);
+
+  // Enrich up to 50 dirty tracked files with their local diff + a
+  // "matches origin" flag. Runs in parallel; each file does at most 3
+  // git invocations (diff + hash-object + rev-parse), all read-only.
+  const dirtyTrackedFiles = await Promise.all(
+    rawTracked.slice(0, 50).map((f) => enrichDirtyFile(cwd, remoteRef, f))
+  );
 
   const workspace: WorkspaceState = {
     branch: app.branch,
@@ -179,7 +249,7 @@ export async function getPreflight(app: AppConfig): Promise<DeployPreflight> {
     remoteHead: remoteHead || null,
     ahead,
     behind,
-    dirtyTrackedFiles: dirtyTrackedFiles.slice(0, 50),
+    dirtyTrackedFiles,
     untrackedFiles: untrackedFiles.slice(0, 50),
     previouslyTrackedFiles,
     aheadCommits,
