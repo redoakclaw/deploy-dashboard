@@ -146,6 +146,47 @@
           "description": "Clear Levels EOD performance update (4:15 PM ET)",
           "type": "timer"
         }
+      ],
+      "analysisScripts": [
+        {
+          "id": "compare-symbols",
+          "label": "MES vs MNQ comparison",
+          "description": "Per-symbol P&L stats from bot/state/trade-log.jsonl. Add --legs for 1-contract banker-only vs 2-contract banker+runner analysis.",
+          "command": ["python3", "scripts/compare_symbols.py"],
+          "timeoutMs": 60000,
+          "args": [
+            {
+              "name": "since",
+              "flag": "--since",
+              "type": "date",
+              "label": "Since date",
+              "placeholder": "YYYY-MM-DD",
+              "description": "Exclude trades before this date"
+            },
+            {
+              "name": "legs",
+              "flag": "--legs",
+              "type": "toggle",
+              "label": "Per-leg analysis",
+              "description": "1-contract banker-only vs 2-contract banker+runner",
+              "default": true
+            },
+            {
+              "name": "daily",
+              "flag": "--daily",
+              "type": "toggle",
+              "label": "Daily breakdown",
+              "description": "Per-day side-by-side MES vs MNQ"
+            },
+            {
+              "name": "dailyLast",
+              "flag": "--daily-last",
+              "type": "number",
+              "label": "Limit to last N days",
+              "description": "Only used when daily breakdown is on"
+            }
+          ]
+        }
       ]
     }
   ]

@@ -5,6 +5,31 @@ export interface ServiceConfig {
   type?: "service" | "timer";
 }
 
+// Declarative spec for a single CLI flag/argument exposed in the UI.
+// The form auto-generates from these; the server only accepts values
+// that pass the type's validator before spawning.
+export interface AnalysisArgSpec {
+  name: string;
+  flag: string;
+  type: "toggle" | "text" | "date" | "number";
+  label: string;
+  description?: string;
+  placeholder?: string;
+  default?: string | number | boolean;
+}
+
+// One analysis script, declared per-app in apps.json. The dashboard
+// only ever runs scripts that appear in this allowlist; the user
+// cannot supply an arbitrary path or command from the browser.
+export interface AnalysisScriptConfig {
+  id: string;
+  label: string;
+  description: string;
+  command: string[];          // e.g. ["python3", "scripts/compare_symbols.py"]
+  args?: AnalysisArgSpec[];
+  timeoutMs?: number;
+}
+
 export interface AppConfig {
   id: string;
   name: string;
@@ -18,6 +43,17 @@ export interface AppConfig {
   services?: ServiceConfig[];
   systemdUnitsDir?: string;
   healthUrl?: string;
+  analysisScripts?: AnalysisScriptConfig[];
+}
+
+export interface AnalysisRunResult {
+  scriptId: string;
+  exitCode: number | null;
+  durationMs: number;
+  stdout: string;
+  stderr: string;
+  timedOut: boolean;
+  commandLine: string;        // human-readable, for the UI
 }
 
 export interface DeployHistoryEntry {

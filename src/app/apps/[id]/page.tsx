@@ -8,6 +8,7 @@ import { LogViewer } from "@/components/LogViewer";
 import { DeployHistory } from "@/components/DeployHistory";
 import { ServicePanel } from "@/components/ServicePanel";
 import { UnitsPanel } from "@/components/UnitsPanel";
+import { AnalysisPanel } from "@/components/AnalysisPanel";
 import { HealthPill, HealthPanel } from "@/components/HealthPill";
 import type { AppWithStatus, DeployHistoryEntry, StatusResponse } from "@/types/app";
 
@@ -156,6 +157,19 @@ export default function AppDetailPage({
         <div className="mb-6">
           <h2 className="mb-3 text-lg font-semibold">Services</h2>
           <ServicePanel appId={app.id} />
+        </div>
+      )}
+
+      {/* Analysis runner — declared per-app via analysisScripts in apps.json */}
+      {app.analysisScripts && app.analysisScripts.length > 0 && (
+        <div className="mb-6">
+          <h2 className="mb-1 text-lg font-semibold">Analysis</h2>
+          <p className="mb-3 text-xs text-text-muted">
+            Ad-hoc reports run on the workspace at{" "}
+            <code className="font-mono text-text">{app.workspaceDir}</code>.
+            Output is captured in-browser — no SSH required.
+          </p>
+          <AnalysisPanel appId={app.id} />
         </div>
       )}
 
