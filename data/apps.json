@@ -13,14 +13,14 @@
     },
     {
       "id": "cpo-finder",
-      "name": "CPO Finder",
+      "name": "Car Finder",
       "repo": "redoakclaw/cpo-finder",
       "branch": "main",
       "workspaceDir": "/home/redoakclaw/.openclaw/workspace/cpo-finder",
       "deployScript": "scripts/deploy.sh",
       "serviceName": "cpo-finder-web",
       "port": 3003,
-      "description": "Certified pre-owned inventory tracker (Lexus/Genesis/Infiniti/Acura/Mazda/Toyota/VW) with daily scrape + cost-of-ownership and warranty tools",
+      "description": "CPO + new inventory tracker (Lexus/Genesis/Infiniti/Acura/Toyota) with daily scrape, new Camry/RAV4 Hybrid AWD feature search, cost-of-ownership and warranty tools",
       "systemdUnitsDir": "deploy",
       "healthUrl": "http://localhost:3003/healthz",
       "services": [
