@@ -1,6 +1,26 @@
 {
   "apps": [
     {
+      "id": "meal-planner",
+      "name": "Meal Planner",
+      "repo": "redoakclaw/meal-planner",
+      "branch": "claude/vegan-meal-planner-recovery-kRoz1",
+      "workspaceDir": "/home/redoakclaw/.openclaw/workspace/meal-planner",
+      "deployScript": "scripts/deploy.sh",
+      "serviceName": "meal-planner-web",
+      "port": 3094,
+      "description": "Vegan athlete meal planner — 7-day performance nutrition plan for a competitive swimmer during the Coptic/Lenten fast (Next.js). Recovered from backups and resurrected.",
+      "systemdUnitsDir": "deploy",
+      "healthUrl": "http://localhost:3094/api/health",
+      "services": [
+        {
+          "name": "meal-planner-web",
+          "label": "Web App",
+          "description": "Next.js server on port 3094 serving the meal plan, recipes, grocery list, and tips"
+        }
+      ]
+    },
+    {
       "id": "pitching-analysis",
       "name": "Pitching Analysis Dashboard",
       "repo": "redoakclaw/pitching-analysis",
