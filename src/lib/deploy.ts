@@ -1,5 +1,5 @@
 import { spawn, execFileSync } from "child_process";
-import { createWriteStream, readFileSync, existsSync } from "fs";
+import { createWriteStream, readFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
 import type { AppConfig } from "@/types/app";
 import { setDeploying, setDeployComplete, readDeployStatus } from "./apps";
@@ -22,6 +22,50 @@ export function getRunningDeployCount(): number {
 }
 
 /**
+ * Bootstrap-clone the app's repo into its workspace dir when no checkout
+ * exists yet. This is the first-deploy path for a freshly registered app:
+ * the workspace has never been cloned, so there's nothing for `git fetch`
+ * (or the deploy script's `git reset --hard`) to run against. Without this,
+ * `git fetch` runs with a non-existent cwd and fails with the misleading
+ * "spawnSync git ENOENT" (Node reports ENOENT against the command, not the
+ * missing directory). We clone from the same GitHub URL the UI links to.
+ */
+function ensureWorkspaceClone(
+  app: AppConfig,
+  env: NodeJS.ProcessEnv,
+  writeLog: (data: string) => void
+): { ok: boolean; error?: string } {
+  // A real checkout has a .git entry. If it's there, nothing to do.
+  if (existsSync(path.join(app.workspaceDir, ".git"))) {
+    return { ok: true };
+  }
+
+  const cloneUrl = `https://github.com/${app.repo}.git`;
+  writeLog(
+    `[${new Date().toISOString()}] No checkout at ${app.workspaceDir} — cloning ${cloneUrl} (branch ${app.branch})...\n`
+  );
+
+  // git clone creates the leaf dir but not missing parents.
+  try {
+    mkdirSync(path.dirname(app.workspaceDir), { recursive: true });
+  } catch (err) {
+    return { ok: false, error: `could not create workspace parent dir: ${err}` };
+  }
+
+  try {
+    execFileSync(
+      "git",
+      ["clone", "--branch", app.branch, cloneUrl, app.workspaceDir],
+      { encoding: "utf-8", timeout: 120000, env }
+    );
+  } catch (err) {
+    return { ok: false, error: `git clone failed: ${err}` };
+  }
+
+  return { ok: true };
+}
+
+/**
  * Ensure the deploy script exists on disk before we try to run it.
  * This handles the chicken-and-egg case where the deploy script was
  * just added or updated in the remote but hasn't been pulled yet.
@@ -29,13 +73,22 @@ export function getRunningDeployCount(): number {
  * the target branch, leaving everything else for the script itself
  * to handle via git reset --hard.
  */
-function ensureDeployScript(app: AppConfig): { ok: boolean; error?: string } {
+function ensureDeployScript(
+  app: AppConfig,
+  writeLog: (data: string) => void
+): { ok: boolean; error?: string } {
   const env = { ...process.env };
   if (!env.XDG_RUNTIME_DIR) {
     const uid = process.getuid?.();
     if (uid !== undefined) {
       env.XDG_RUNTIME_DIR = `/run/user/${uid}`;
     }
+  }
+
+  // First-deploy bootstrap: clone the repo if the workspace is empty.
+  const cloneResult = ensureWorkspaceClone(app, env, writeLog);
+  if (!cloneResult.ok) {
+    return cloneResult;
   }
 
   try {
@@ -113,7 +166,7 @@ export function startDeploy(
 
   // Ensure the deploy script is on disk (fetch + checkout from remote)
   writeLog(`[${new Date().toISOString()}] Fetching deploy script from origin/${app.branch}...\n`);
-  const ensureResult = ensureDeployScript(app);
+  const ensureResult = ensureDeployScript(app, writeLog);
   if (!ensureResult.ok) {
     writeLog(`[${new Date().toISOString()}] ${ensureResult.error}\n`);
     writeLog(`\n---\n[${new Date().toISOString()}] Deploy failed (could not fetch deploy script)\n`);
