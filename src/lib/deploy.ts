@@ -2,7 +2,12 @@ import { spawn, execFileSync } from "child_process";
 import { createWriteStream, readFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
 import type { AppConfig } from "@/types/app";
-import { setDeploying, setDeployComplete, readDeployStatus } from "./apps";
+import {
+  loadApps,
+  setDeploying,
+  setDeployComplete,
+  readDeployStatus,
+} from "./apps";
 
 const MAX_CONCURRENT_DEPLOYS = 3;
 const DEPLOY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
@@ -22,13 +27,53 @@ export function getRunningDeployCount(): number {
 }
 
 /**
+ * Work out the URL to clone a brand-new app from. The host authenticates to
+ * GitHub per-remote (there's no global credential helper for github.com — a
+ * bare `https://github.com/...` clone prompts for a username and fails in this
+ * non-interactive context). So instead of inventing a URL, we reuse the auth
+ * scheme that already works on this host: read the `origin` URL from an
+ * existing sibling workspace and swap its repo path for ours. This carries
+ * over whatever the host uses (token-in-URL, SSH, etc.) without us ever
+ * needing to know the secret. Falls back to plain HTTPS (fine for a public
+ * repo, or a host that does have a credential helper) if no sibling exists.
+ */
+function deriveCloneUrl(
+  app: AppConfig,
+  env: NodeJS.ProcessEnv
+): { url: string; basis: string } {
+  for (const sibling of loadApps()) {
+    if (sibling.id === app.id) continue;
+    if (!existsSync(path.join(sibling.workspaceDir, ".git"))) continue;
+    try {
+      const originUrl = execFileSync(
+        "git",
+        ["remote", "get-url", "origin"],
+        { cwd: sibling.workspaceDir, encoding: "utf-8", timeout: 10000, env }
+      ).trim();
+      // The sibling's repo slug (owner/name) appears verbatim in both SSH
+      // (git@host:owner/name.git) and HTTPS (scheme://[auth@]host/owner/name)
+      // forms, so a literal swap preserves scheme, host, auth, and suffix.
+      if (originUrl && originUrl.includes(sibling.repo)) {
+        return {
+          url: originUrl.replace(sibling.repo, app.repo),
+          basis: `derived from sibling workspace ${sibling.id}`,
+        };
+      }
+    } catch {
+      // Sibling's origin unreadable — try the next one.
+    }
+  }
+  return { url: `https://github.com/${app.repo}.git`, basis: "default github.com HTTPS" };
+}
+
+/**
  * Bootstrap-clone the app's repo into its workspace dir when no checkout
  * exists yet. This is the first-deploy path for a freshly registered app:
  * the workspace has never been cloned, so there's nothing for `git fetch`
  * (or the deploy script's `git reset --hard`) to run against. Without this,
  * `git fetch` runs with a non-existent cwd and fails with the misleading
  * "spawnSync git ENOENT" (Node reports ENOENT against the command, not the
- * missing directory). We clone from the same GitHub URL the UI links to.
+ * missing directory).
  */
 function ensureWorkspaceClone(
   app: AppConfig,
@@ -40,9 +85,9 @@ function ensureWorkspaceClone(
     return { ok: true };
   }
 
-  const cloneUrl = `https://github.com/${app.repo}.git`;
+  const { url: cloneUrl, basis } = deriveCloneUrl(app, env);
   writeLog(
-    `[${new Date().toISOString()}] No checkout at ${app.workspaceDir} — cloning ${cloneUrl} (branch ${app.branch})...\n`
+    `[${new Date().toISOString()}] No checkout at ${app.workspaceDir} — cloning ${app.repo} (branch ${app.branch}, ${basis})...\n`
   );
 
   // git clone creates the leaf dir but not missing parents.
@@ -59,7 +104,10 @@ function ensureWorkspaceClone(
       { encoding: "utf-8", timeout: 120000, env }
     );
   } catch (err) {
-    return { ok: false, error: `git clone failed: ${err}` };
+    // The error string echoes the full clone command, which may embed a
+    // token in the URL. Redact the URL before it reaches the deploy log.
+    const sanitized = String(err).split(cloneUrl).join(`<${app.repo}>`);
+    return { ok: false, error: `git clone failed: ${sanitized}` };
   }
 
   return { ok: true };
