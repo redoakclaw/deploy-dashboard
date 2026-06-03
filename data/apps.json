@@ -4,7 +4,7 @@
       "id": "meal-planner",
       "name": "Meal Planner",
       "repo": "redoakclaw/meal-planner",
-      "branch": "claude/vegan-meal-planner-recovery-kRoz1",
+      "branch": "main",
       "workspaceDir": "/home/redoakclaw/.openclaw/workspace/meal-planner",
       "deployScript": "scripts/deploy.sh",
       "serviceName": "meal-planner-web",
