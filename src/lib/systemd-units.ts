@@ -289,6 +289,21 @@ export async function installUnits(
   }
 
   const reload = await daemonReload();
+
+  // Arm timers. Copying + daemon-reload only makes a unit *known*; a timer
+  // must be `enable --now`d to actually schedule (the copy-without-enable gap
+  // behind the 2026-06-18 contract-roll miss). Oneshot/daemon services are
+  // intentionally left alone — timer-backed oneshots are pulled by their
+  // timer, and daemons are handled by the per-unit Start action.
+  for (const r of results) {
+    if (!r.success || !r.name.endsWith(".timer")) continue;
+    const en = await runCommand("systemctl", ["--user", "enable", "--now", r.name]);
+    r.enabled = en.exitCode === 0;
+    if (en.exitCode !== 0) {
+      r.enableError = en.stderr.trim() || `exit ${en.exitCode}`;
+    }
+  }
+
   return {
     results,
     daemonReloaded: reload.ok,

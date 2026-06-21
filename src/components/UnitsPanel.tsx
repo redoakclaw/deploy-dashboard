@@ -419,9 +419,11 @@ export function UnitsPanel({ appId }: { appId: string }) {
             ))}
           </ul>
           <div className="mt-2 text-text-muted">
-            Remember: Install only copies unit files and runs daemon-reload.
-            Long-running daemons still need a Restart in the Services panel to
-            pick up the new definition.
+            Remember: Install copies unit files, runs daemon-reload, and{" "}
+            <code className="font-mono">enable --now</code>s any installed{" "}
+            <code className="font-mono">.timer</code> so it arms. Oneshot/daemon
+            services are not auto-enabled — long-running daemons still need a
+            Restart in the Services panel to pick up the new definition.
           </div>
         </div>
       )}
