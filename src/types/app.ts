@@ -92,6 +92,10 @@ export interface UnitInstallResult {
   name: string;
   success: boolean;
   error?: string;
+  // Timers are `enable --now`d after install so they actually arm; these
+  // report the outcome of that step (undefined for non-timer units).
+  enabled?: boolean;
+  enableError?: string;
 }
 
 export interface UnitInstallResponse {

@@ -170,8 +170,8 @@ export default function AppDetailPage({
             </code>{" "}
             in the repo and installed copies in{" "}
             <code className="font-mono text-text">~/.config/systemd/user/</code>
-            . Install copies + runs daemon-reload; it does not restart running
-            services.
+            . Install copies + runs daemon-reload + arms installed timers
+            (enable --now); it does not restart running services.
           </p>
           <UnitsPanel appId={app.id} />
         </div>
